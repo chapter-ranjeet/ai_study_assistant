@@ -1,24 +1,48 @@
 import { useState, useEffect } from "react";
 import axios from "axios";
 
+const fetchNotesHistory = async (authToken) => {
+  const res = await axios.get("http://127.0.0.1:8000/notes/history", {
+    headers: {
+      Authorization: `Bearer ${authToken}`,
+    },
+  });
+
+  return res.data;
+};
+
 export default function Dashboard() {
   const [topic, setTopic] = useState("");
   const [notes, setNotes] = useState("");
   const [history, setHistory] = useState([]);
   const [loading, setLoading] = useState(false);
 
-  const token = localStorage.getItem("token");
-
   // 🔐 Protect route
   useEffect(() => {
+    const token = localStorage.getItem("token");
+
     if (!token) {
       window.location.href = "/";
+      return;
     }
+
+    fetchNotesHistory(token)
+      .then(setHistory)
+      .catch((err) => {
+        console.error(err);
+      });
   }, []);
 
   // 🔥 Generate Notes
   const generateNotes = async () => {
     if (!topic) return alert("Enter a topic");
+
+    const token = localStorage.getItem("token");
+
+    if (!token) {
+      window.location.href = "/";
+      return;
+    }
 
     setLoading(true);
 
@@ -34,7 +58,8 @@ export default function Dashboard() {
       );
 
       setNotes(res.data.content);
-      fetchHistory();
+      const updatedHistory = await fetchNotesHistory(token);
+      setHistory(updatedHistory);
       setTopic("");
     } catch (err) {
       console.error(err);
@@ -43,27 +68,6 @@ export default function Dashboard() {
       setLoading(false);
     }
   };
-
-  // 📜 Fetch History
-  const fetchHistory = async () => {
-    try {
-      const res = await axios.get(
-        "http://127.0.0.1:8000/notes/history",
-        {
-          headers: {
-            Authorization: `Bearer ${token}`,
-          },
-        }
-      );
-      setHistory(res.data);
-    } catch (err) {
-      console.error(err);
-    }
-  };
-
-  useEffect(() => {
-    fetchHistory();
-  }, []);
 
   // 🔓 Logout
   const handleLogout = () => {
